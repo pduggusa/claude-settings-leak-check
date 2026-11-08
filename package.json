@@ -2,10 +2,35 @@
   "name": "claude-settings-leak-check",
   "version": "1.0.0",
   "description": "Find secrets saved in Claude Code settings files (.claude/settings.local.json) before they reach a git remote. Local only, never prints a secret.",
-  "bin": { "claude-settings-leak-check": "bin/claude-settings-leak-check.js" },
-  "scripts": { "test": "node --test test/*.test.js" },
-  "engines": { "node": ">=18" },
+  "bin": {
+    "claude-settings-leak-check": "bin/claude-settings-leak-check.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "license": "MIT",
-  "keywords": ["claude-code", "secrets", "security", "settings.local.json", "git"],
-  "files": ["bin", "README.md", "LICENSE"]
+  "keywords": [
+    "claude-code",
+    "secrets",
+    "security",
+    "settings.local.json",
+    "git"
+  ],
+  "files": [
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pduggusa/claude-settings-leak-check.git"
+  },
+  "homepage": "https://github.com/pduggusa/claude-settings-leak-check#readme",
+  "bugs": {
+    "url": "https://github.com/pduggusa/claude-settings-leak-check/issues"
+  },
+  "author": "DugganUSA LLC"
 }

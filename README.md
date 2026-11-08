@@ -20,7 +20,7 @@ Two things make this easy to miss:
 ## Use it
 
 ```
-npx github:pduggusa/claude-settings-leak-check --root ~/code
+npx claude-settings-leak-check --root ~/code
 ```
 
 Options: `--root <dir>` (default: current directory), `--depth <n>` (default: 4), `--json`.
@@ -28,7 +28,7 @@ Options: `--root <dir>` (default: current directory), `--depth <n>` (default: 4)
 Exit code `2` means at least one finding, `0` means none. That makes it usable in CI:
 
 ```
-- run: npx --yes github:pduggusa/claude-settings-leak-check --root .
+- run: npx --yes claude-settings-leak-check --root .
 ```
 
 ## What it reports
