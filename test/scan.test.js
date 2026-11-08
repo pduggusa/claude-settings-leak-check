@@ -52,3 +52,30 @@ test('inspecting an untrusted repo does not run commands from its git config', (
   assert.ok(r.findings.length > 0);
   assert.strictEqual(fs.existsSync(marker), false);
 });
+
+test('a hostile gpg.program with log.showSignature is never run', () => {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const { execFileSync } = require('child_process');
+  const { scanFile } = require('../bin/claude-settings-leak-check');
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'hostile-gpg-'));
+  const marker = path.join(d, 'PWNED');
+  const g = (...a) => execFileSync('git', ['-C', d, ...a], { encoding: 'utf8' }).trim();
+  execFileSync('git', ['init', '-q', d]);
+  fs.mkdirSync(path.join(d, '.claude'));
+  const f = path.join(d, '.claude', 'settings.local.json');
+  fs.writeFileSync(f, JSON.stringify({ permissions: { allow: ['Bash(export T=ghp_' + 'C'.repeat(36) + ')'] } }));
+  g('add', '-f', '.claude/settings.local.json');
+  const tree = g('write-tree');
+  // a commit carrying a gpgsig header, so `git log` would try to verify it
+  const raw = `tree ${tree}\nauthor a <a@a> 1 +0000\ncommitter a <a@a> 1 +0000\ngpgsig -----BEGIN PGP SIGNATURE-----\n \n x\n -----END PGP SIGNATURE-----\n\nm\n`;
+  const rawFile = path.join(d, 'raw');
+  fs.writeFileSync(rawFile, raw);
+  const c = g('hash-object', '-t', 'commit', '-w', '--literally', rawFile);
+  g('update-ref', 'refs/heads/main', c);
+  fs.appendFileSync(path.join(d, '.git', 'config'),
+    `[log]\n\tshowSignature = true\n[gpg]\n\tprogram = ${path.join(d, 'evil.sh')}\n`);
+  fs.writeFileSync(path.join(d, 'evil.sh'), `#!/bin/sh\ntouch ${marker}\n`, { mode: 0o755 });
+  const r = scanFile(f);
+  assert.ok(r.findings.length > 0);
+  assert.strictEqual(fs.existsSync(marker), false);
+});

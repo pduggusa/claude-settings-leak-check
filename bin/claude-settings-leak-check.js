@@ -88,20 +88,25 @@ function git(cwd, args) {
     // A scanned repo is untrusted: its .git/config can name commands (core.fsmonitor, hooks).
     // Neutralize those so inspecting a clone cannot execute anything from it.
     const hardened = ['-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', '-c', 'core.untrackedCache=false',
-      '-c', 'protocol.allow=never', '-c', 'core.sshCommand=false', '-c', 'core.pager=cat'];
-    const env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0' };
+      '-c', 'protocol.allow=never', '-c', 'core.sshCommand=false', '-c', 'core.pager=cat',
+      '-c', 'log.showSignature=false', '-c', 'gpg.program=false', '-c', 'gpg.ssh.program=false', '-c', 'gpg.x509.program=false'];
+    const env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0' };
     return execFileSync('git', [...hardened, ...args], { cwd, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15000 }).trim();
   } catch (e) { return null; }
 }
 
-function exposure(file) {
+function exposure(inputFile) {
+  // git reports the real path of the toplevel; a symlinked input (macOS /var -> /private/var)
+  // would make path.relative() yield a nonsense pathspec and silently mis-grade the file.
+  let file = inputFile;
+  try { file = fs.realpathSync(inputFile); } catch (e) { /* keep as given */ }
   const dir = path.dirname(file);
   const top = git(dir, ['rev-parse', '--show-toplevel']);
   if (!top) return { git: false };
   const rel = path.relative(top, file);
   const tracked = git(top, ['ls-files', '--', rel]) === rel;
   const ignored = git(top, ['check-ignore', '-q', '--', rel]) !== null;
-  const everCommitted = (git(top, ['log', '--all', '--oneline', '-1', '--', rel]) || '') !== '';
+  const everCommitted = (git(top, ['rev-list', '--all', '-1', '--', rel]) || '') !== '';
   const remotes = (git(top, ['remote', '-v']) || '').split('\n').filter(Boolean).length > 0;
   return { git: true, tracked, ignored, everCommitted, hasRemote: remotes };
 }
