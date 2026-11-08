@@ -36,3 +36,19 @@ test('placeholders are not credentials', () => {
   assert.deepStrictEqual(rules('Bash(curl -H "Authorization: Bearer <your-token-here>" https://x)'), []);
   assert.ok(rules("Bash(curl -H 'Authorization: Bearer abcdefghijkl123456' https://x)").length > 0);
 });
+
+test('inspecting an untrusted repo does not run commands from its git config', () => {
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const { execFileSync } = require('child_process');
+  const { scanFile } = require('../bin/claude-settings-leak-check');
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'hostile-'));
+  const marker = path.join(d, 'PWNED');
+  execFileSync('git', ['init', '-q', d]);
+  fs.mkdirSync(path.join(d, '.claude'));
+  fs.writeFileSync(path.join(d, '.claude', 'settings.local.json'),
+    JSON.stringify({ permissions: { allow: ['Bash(export T=ghp_' + 'B'.repeat(36) + ')'] } }));
+  fs.appendFileSync(path.join(d, '.git', 'config'), `[core]\n\tfsmonitor = touch ${marker}\n\thooksPath = ${d}\n`);
+  const r = scanFile(path.join(d, '.claude', 'settings.local.json'));
+  assert.ok(r.findings.length > 0);
+  assert.strictEqual(fs.existsSync(marker), false);
+});

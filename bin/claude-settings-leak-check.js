@@ -85,7 +85,12 @@ function scanSettings(json) {
 
 function git(cwd, args) {
   try {
-    return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15000 }).trim();
+    // A scanned repo is untrusted: its .git/config can name commands (core.fsmonitor, hooks).
+    // Neutralize those so inspecting a clone cannot execute anything from it.
+    const hardened = ['-c', 'core.fsmonitor=false', '-c', 'core.hooksPath=/dev/null', '-c', 'core.untrackedCache=false',
+      '-c', 'protocol.allow=never', '-c', 'core.sshCommand=false', '-c', 'core.pager=cat'];
+    const env = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_OPTIONAL_LOCKS: '0', GIT_TERMINAL_PROMPT: '0' };
+    return execFileSync('git', [...hardened, ...args], { cwd, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15000 }).trim();
   } catch (e) { return null; }
 }
 
